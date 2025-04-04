@@ -54,14 +54,14 @@ public class StatusController {
             adminRepoConn = TripleStore.get().getAdminRepoConnection();
             // Serializable, as the service state needs to be strictly consistent
             adminRepoConn.begin(IsolationLevels.SERIALIZABLE);
-            // Fetch the state from the DB
-            try (var statements = adminRepoConn.getStatements(
-                    TripleStore.THIS_REPO_ID,
-                    TripleStore.HAS_STATUS,
-                    null,
-                    NanopubLoader.ADMIN_GRAPH
-            )) {
-                if (!statements.hasNext()) {
+            try {
+                // Fetch the state from the DB
+                var fetchedState = Utils.getObjectForPattern(
+                        adminRepoConn,
+                        NanopubLoader.ADMIN_GRAPH, TripleStore.THIS_REPO_ID, TripleStore.HAS_STATUS
+                );
+                if (fetchedState == null) {
+                    // No state found, set it in the DB
                     adminRepoConn.add(
                             TripleStore.THIS_REPO_ID,
                             TripleStore.HAS_STATUS,
@@ -69,18 +69,16 @@ public class StatusController {
                             NanopubLoader.ADMIN_GRAPH
                     );
                 } else {
-                    var stateStatement = statements.next();
-                    state = State.valueOf(stateStatement.getObject().stringValue());
+                    // State found, use the fetched value
+                    state = State.valueOf(fetchedState.stringValue());
                 }
-            }
-            // Fetch the load counter from the DB
-            try (var statements = adminRepoConn.getStatements(
-                    TripleStore.THIS_REPO_ID,
-                    TripleStore.HAS_REGISTRY_LOAD_COUNTER,
-                    null,
-                    NanopubLoader.ADMIN_GRAPH
-            )) {
-                if (!statements.hasNext()) {
+                // Fetch the load counter from the DB
+                var fetchedCounter = Utils.getObjectForPattern(
+                        adminRepoConn,
+                        NanopubLoader.ADMIN_GRAPH, TripleStore.THIS_REPO_ID, TripleStore.HAS_REGISTRY_LOAD_COUNTER
+                );
+                if (fetchedCounter == null) {
+                    // No load counter found, set to default
                     adminRepoConn.add(
                             TripleStore.THIS_REPO_ID,
                             TripleStore.HAS_REGISTRY_LOAD_COUNTER,
@@ -88,8 +86,8 @@ public class StatusController {
                             NanopubLoader.ADMIN_GRAPH
                     );
                 } else {
-                    var counterStatement = statements.next();
-                    var stringVal = counterStatement.getObject().stringValue();
+                    // Load counter found, set it
+                    var stringVal = fetchedCounter.stringValue();
                     lastCommittedCounter = Long.parseLong(stringVal);
                 }
                 adminRepoConn.commit();

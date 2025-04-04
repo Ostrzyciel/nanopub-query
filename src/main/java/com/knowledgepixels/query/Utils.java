@@ -81,19 +81,19 @@ public class Utils {
 	}
 
 	public static Value getObjectForPattern(RepositoryConnection conn, IRI graph, IRI subj, IRI pred) {
-		TupleQueryResult r = conn.prepareTupleQuery(QueryLanguage.SPARQL, "SELECT * { graph <" + graph.stringValue() + "> { <" + subj.stringValue() + "> <" + pred.stringValue() + "> ?o } }").evaluate();
-		try (r) {
-			if (!r.hasNext()) return null;
-			return r.next().getBinding("o").getValue();
+		var result = conn.getStatements(subj, pred, null, graph);
+		try (result) {
+			if (!result.hasNext()) return null;
+			return result.next().getObject();
 		}
 	}
 
 	public static List<Value> getObjectsForPattern(RepositoryConnection conn, IRI graph, IRI subj, IRI pred) {
 		List<Value> values = new ArrayList<>();
-		TupleQueryResult r = conn.prepareTupleQuery(QueryLanguage.SPARQL, "SELECT * { graph <" + graph.stringValue() + "> { <" + subj.stringValue() + "> <" + pred.stringValue() + "> ?o } }").evaluate();
-		try (r) {
-			while (r.hasNext()) {
-				values.add(r.next().getBinding("o").getValue());
+		var result = conn.getStatements(subj, pred, null, graph);
+		try (result) {
+			while (result.hasNext()) {
+				values.add(result.next().getObject());
 			}
 			return values;
 		}
